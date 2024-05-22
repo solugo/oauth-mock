@@ -16,7 +16,7 @@ permissions:
   packages: write
 
 env:
-  REPO: "ghcr.io/${{ github.repository }}"
+  IMAGE: "ghcr.io/${{ github.repository }}"
 
 jobs:
   version:
@@ -50,7 +50,8 @@ jobs:
       - name: Build
         run: |
           ./gradlew test jib \
-            -Djib.to.image=$REPO \ 
+            -Pversion=$VERSION \
+            -Djib.to.image=$IMAGE \ 
             -Djib.to.tags=$VERSION \
             -Djib.to.auth.username=${{ github.actor }} \ 
             -Djib.to.auth.password=${{ secrets.GITHUB_TOKEN }} \ 
