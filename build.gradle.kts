@@ -49,10 +49,10 @@ jib {
         image = "openjdk:23-slim-bullseye"
     }
     container {
-        mainClass = "OidcServer"
+        mainClass = "OAuthMock"
     }
     to {
-        image = "oidc-server"
+        image = "oauth-mock"
     }
 }
 
