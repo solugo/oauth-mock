@@ -34,7 +34,6 @@ dependencies {
     testImplementation("io.kotest:kotest-assertions-core")
     testImplementation("io.kotest:kotest-assertions-json")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
-
 }
 
 kotlin {
@@ -59,4 +58,8 @@ jib {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    testLogging {
+        events("failed", "passed")
+        showCauses = true
+    }
 }

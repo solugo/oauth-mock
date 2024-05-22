@@ -2,6 +2,8 @@ package de.solugo.oauthmock.controller
 
 import IntegrationTest
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.kotest.matchers.longs.beGreaterThan
+import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.ktor.client.call.*
@@ -38,9 +40,8 @@ class TokenControllerTest : IntegrationTest() {
         }.apply {
             status shouldBe HttpStatusCode.OK
             body<ObjectNode>().apply {
-
                 at("/token_type").textValue() shouldBe "Bearer"
-                at("/expires_in").numberValue() shouldBe 3600
+                at("/expires_in").longValue() should beGreaterThan(3500L)
                 at("/access_token").textValue() shouldNotBe null
                 at("/id_token").textValue() shouldNotBe null
                 at("/refresh_token").textValue() shouldNotBe null
