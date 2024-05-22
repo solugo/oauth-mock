@@ -1,0 +1,78 @@
+name: build
+
+on:
+  workflow_dispatch:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!README.md'
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  packages: write
+
+env:
+  REPO: "ghcr.io/${{ github.repository }}"
+
+jobs:
+  version:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Calculate version
+        id: version
+        run: curl -Ls https://solugo.github.io/gitversion/run.sh | GITVERSION=v1.1.0 bash
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs:
+      - version
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Build
+        run: |
+          ./gradlew test jib \
+            -Djib.to.image=$REPO \ 
+            -Djib.to.tags=$VERSION \
+            -Djib.to.auth.username=${{ github.actor }} \ 
+            -Djib.to.auth.password=${{ secrets.GITHUB_TOKEN }} \ 
+            --console=plain \
+            --no-daemon \
+          ;
+  publish:
+    name: Publish to Titan01
+    runs-on: ubuntu-latest
+    needs:
+      - version
+      - build
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Configure Kubernetes
+        run: mkdir ~/.kube && echo '${{ secrets.KUBE_CONFIG_TITAN_01 }}' > ~/.kube/config
+      - name: Deploy to Kubernetes
+        run: |
+          helm upgrade -i oauth-mock ./chart \
+            --set ingress.enabled=true \
+            --set ingress.domain=oauth-mock.solugo.de \
+            --set ingress.annotations."kubernetes\.io/ingress\.class"=public \
+            --set ingress.annotations."cert-manager\.io/cluster-issuer"=letsencrypt \
+          ;

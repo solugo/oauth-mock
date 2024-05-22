@@ -1,0 +1,18 @@
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 250Mi
+  limits:
+    cpu: 500m
+    memory: 500Mi
+
+image:
+  repository: 'ghcr.io/solugo/oauth-mock'
+
+service:
+  port: 80
+
+ingress:
+  enabled: false
