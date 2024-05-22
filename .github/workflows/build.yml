@@ -16,8 +16,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE: "ghcr.io/${{ github.repository }}"
-
+  IMAGE: 'ghcr.io/${{ github.repository }}'
 jobs:
   version:
     name: Calculate Version
@@ -31,7 +30,7 @@ jobs:
           fetch-depth: 0
       - name: Calculate version
         id: version
-        run: curl -Ls https://solugo.github.io/gitversion/run.sh | GITVERSION=v1.1.0 bash
+        run: curl -Ls https://solugo.github.io/gitversion/run.sh | GITVERSION=v1.1.1 bash
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -47,14 +46,16 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
       - name: Build
         run: |
           ./gradlew test jib \
             -Pversion=$VERSION \
-            -Djib.to.image=$IMAGE \ 
+            -Djib.to.image=$IMAGE \
             -Djib.to.tags=$VERSION \
-            -Djib.to.auth.username=${{ github.actor }} \ 
-            -Djib.to.auth.password=${{ secrets.GITHUB_TOKEN }} \ 
+            -Djib.to.auth.username=${{ github.actor }} \
+            -Djib.to.auth.password=${{ secrets.GITHUB_TOKEN }} \
             --console=plain \
             --no-daemon \
           ;
@@ -67,9 +68,12 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Configure Kubernetes
         run: mkdir ~/.kube && echo '${{ secrets.KUBE_CONFIG_TITAN_01 }}' > ~/.kube/config
       - name: Deploy to Kubernetes
+        shell: bash
         run: |
           helm upgrade -i oauth-mock ./chart \
             --set ingress.enabled=true \
