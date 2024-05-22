@@ -76,8 +76,12 @@ jobs:
         shell: bash
         run: |
           helm upgrade -i oauth-mock ./chart \
+            --set image.tag=$VERSION \
             --set ingress.enabled=true \
             --set ingress.domain=oauth-mock.solugo.de \
             --set ingress.annotations."kubernetes\.io/ingress\.class"=public \
             --set ingress.annotations."cert-manager\.io/cluster-issuer"=letsencrypt \
+            --set imagePull.credentials.registry="ghcr.io" \
+            --set imagePull.credentials.username="${{ secrets.REGISTRY_PULL_USERNAME }}" \
+            --set imagePull.credentials.password="${{ secrets.REGISTRY_PULL_PASSWORD }}" \
           ;
