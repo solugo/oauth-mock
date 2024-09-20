@@ -2,8 +2,8 @@ package de.solugo.oauthmock.controller
 
 import IntegrationTest
 import com.fasterxml.jackson.databind.node.ObjectNode
-import io.kotest.matchers.longs.beGreaterThan
-import io.kotest.matchers.should
+import de.solugo.oauthmock.util.clientId
+import de.solugo.oauthmock.util.scopes
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.ktor.client.call.*
@@ -11,9 +11,12 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
+import org.jose4j.jwt.consumer.JwtConsumerBuilder
 import org.junit.jupiter.api.Test
 
 class TokenControllerTest : IntegrationTest() {
+
+    private val consumer = JwtConsumerBuilder().setSkipSignatureVerification().setSkipAllValidators().build()
 
     @Test
     fun `Get openid configuration`() = runTest {
@@ -21,6 +24,28 @@ class TokenControllerTest : IntegrationTest() {
             status shouldBe HttpStatusCode.OK
             body<ObjectNode>().apply {
                 at("/issuer").textValue() shouldBe "https://my_issuer/"
+            }
+        }
+    }
+
+    @Test
+    fun `Create only access token using password grant`() = runTest {
+        val parameters = parametersOf(
+            "grant_type" to listOf("password"),
+            "client_id" to listOf("client_test"),
+            "username" to listOf("test"),
+        )
+
+        rest.post("token") {
+            setBody(FormDataContent(parameters))
+        }.apply {
+            status shouldBe HttpStatusCode.OK
+            body<ObjectNode>().apply {
+                at("/token_type").textValue() shouldBe "Bearer"
+                at("/access_token").textValue() shouldNotBe null
+
+                at("/id_token").textValue() shouldBe null
+                at("/refresh_token").textValue() shouldBe null
             }
         }
     }
@@ -33,6 +58,10 @@ class TokenControllerTest : IntegrationTest() {
             "client_id" to listOf("client_test"),
             "username" to listOf("test"),
             "scope" to listOf("openid offline_access"),
+            "claims" to listOf("""{"qcc": "common"}"""),
+            "idClaims" to listOf("""{"qic": "id"}"""),
+            "accessClaims" to listOf("""{"qac": "access"}"""),
+            "refreshClaims" to listOf("""{"qrc": "refresh"}"""),
         )
 
         rest.post("token") {
@@ -41,10 +70,36 @@ class TokenControllerTest : IntegrationTest() {
             status shouldBe HttpStatusCode.OK
             body<ObjectNode>().apply {
                 at("/token_type").textValue() shouldBe "Bearer"
-                at("/expires_in").longValue() should beGreaterThan(3500L)
-                at("/access_token").textValue() shouldNotBe null
-                at("/id_token").textValue() shouldNotBe null
-                at("/refresh_token").textValue() shouldNotBe null
+                at("/access_token").textValue().also { token ->
+                    val claims = consumer.processToClaims(token)
+                    claims.subject shouldNotBe null
+                    claims.clientId shouldBe "client_test"
+                    claims.scopes shouldBe setOf("openid", "offline_access")
+                    claims.getClaimValueAsString("qcc") shouldBe "common"
+                    claims.getClaimValueAsString("qac") shouldBe "access"
+                    claims.hasClaim("qic") shouldBe false
+                    claims.hasClaim("qrc") shouldBe false
+                }
+                at("/id_token").textValue().also { token ->
+                    val claims = consumer.processToClaims(token)
+                    claims.subject shouldNotBe null
+                    claims.clientId shouldBe "client_test"
+                    claims.scopes shouldBe setOf("openid", "offline_access")
+                    claims.getClaimValueAsString("qcc") shouldBe "common"
+                    claims.getClaimValueAsString("qic") shouldBe "id"
+                    claims.hasClaim("qac") shouldBe false
+                    claims.hasClaim("qrc") shouldBe false
+                }
+                at("/refresh_token").textValue().also { token ->
+                    val claims = consumer.processToClaims(token)
+                    claims.subject shouldNotBe null
+                    claims.clientId shouldBe "client_test"
+                    claims.scopes shouldBe setOf("openid", "offline_access")
+                    claims.getClaimValueAsString("qcc") shouldBe "common"
+                    claims.getClaimValueAsString("qrc") shouldBe "refresh"
+                    claims.hasClaim("qac") shouldBe false
+                    claims.hasClaim("qic") shouldBe false
+                }
             }
         }
     }
@@ -55,6 +110,10 @@ class TokenControllerTest : IntegrationTest() {
             "grant_type" to listOf("client_credentials"),
             "client_id" to listOf("client_test"),
             "scope" to listOf("custom"),
+            "claims" to listOf("""{"qcc": "common"}"""),
+            "idClaims" to listOf("""{"qic": "id"}"""),
+            "accessClaims" to listOf("""{"qac": "access"}"""),
+            "refreshClaims" to listOf("""{"qrc": "refresh"}"""),
         )
 
         rest.post("token") {
@@ -63,8 +122,16 @@ class TokenControllerTest : IntegrationTest() {
             status shouldBe HttpStatusCode.OK
             body<ObjectNode>().apply {
                 at("/token_type").textValue() shouldBe "Bearer"
-                at("/expires_in").numberValue() shouldBe 3600
-                at("/access_token").textValue() shouldNotBe null
+                at("/access_token").textValue().also { token ->
+                    val claims = consumer.processToClaims(token)
+                    claims.subject shouldNotBe null
+                    claims.clientId shouldBe "client_test"
+                    claims.scopes shouldBe setOf("custom")
+                    claims.getClaimValueAsString("qcc") shouldBe "common"
+                    claims.getClaimValueAsString("qac") shouldBe "access"
+                    claims.hasClaim("qic") shouldBe false
+                    claims.hasClaim("qrc") shouldBe false
+                }
                 at("/id_token").textValue() shouldBe null
                 at("/refresh_token").textValue() shouldBe null
             }
@@ -78,6 +145,10 @@ class TokenControllerTest : IntegrationTest() {
             "client_id" to listOf("client_test"),
             "username" to listOf("test"),
             "scope" to listOf("openid offline_access"),
+            "claims" to listOf("""{"qcc": "common"}"""),
+            "idClaims" to listOf("""{"qic": "id"}"""),
+            "accessClaims" to listOf("""{"qac": "access"}"""),
+            "refreshClaims" to listOf("""{"qrc": "refresh"}"""),
         )
 
         val refreshToken = rest.post("token") {
@@ -98,10 +169,36 @@ class TokenControllerTest : IntegrationTest() {
             status shouldBe HttpStatusCode.OK
             body<ObjectNode>().apply {
                 at("/token_type").textValue() shouldBe "Bearer"
-                at("/expires_in").numberValue() shouldBe 3600
-                at("/access_token").textValue() shouldNotBe null
-                at("/id_token").textValue() shouldNotBe null
-                at("/refresh_token").textValue() shouldNotBe null
+                at("/access_token").textValue().also { token ->
+                    val claims = consumer.processToClaims(token)
+                    claims.subject shouldNotBe null
+                    claims.clientId shouldBe "client_test"
+                    claims.scopes shouldBe setOf("openid", "offline_access")
+                    claims.getClaimValueAsString("qcc") shouldBe "common"
+                    claims.getClaimValueAsString("qac") shouldBe "access"
+                    claims.hasClaim("qic") shouldBe false
+                    claims.hasClaim("qrc") shouldBe false
+                }
+                at("/id_token").textValue().also { token ->
+                    val claims = consumer.processToClaims(token)
+                    claims.subject shouldNotBe null
+                    claims.clientId shouldBe "client_test"
+                    claims.scopes shouldBe setOf("openid", "offline_access")
+                    claims.getClaimValueAsString("qcc") shouldBe "common"
+                    claims.getClaimValueAsString("qic") shouldBe "id"
+                    claims.hasClaim("qac") shouldBe false
+                    claims.hasClaim("qrc") shouldBe false
+                }
+                at("/refresh_token").textValue().also { token ->
+                    val claims = consumer.processToClaims(token)
+                    claims.subject shouldNotBe null
+                    claims.clientId shouldBe "client_test"
+                    claims.scopes shouldBe setOf("openid", "offline_access")
+                    claims.getClaimValueAsString("qcc") shouldBe "common"
+                    claims.getClaimValueAsString("qrc") shouldBe "refresh"
+                    claims.hasClaim("qac") shouldBe false
+                    claims.hasClaim("qic") shouldBe false
+                }
             }
         }
     }

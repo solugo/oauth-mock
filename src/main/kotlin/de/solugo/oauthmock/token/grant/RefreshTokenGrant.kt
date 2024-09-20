@@ -3,6 +3,7 @@ package de.solugo.oauthmock.token.grant
 import de.solugo.oauthmock.service.TokenService
 import de.solugo.oauthmock.token.*
 import de.solugo.oauthmock.util.clientId
+import de.solugo.oauthmock.util.put
 import de.solugo.oauthmock.util.scopes
 import org.springframework.stereotype.Component
 
@@ -23,20 +24,31 @@ class RefreshTokenGrant(
             description = "Request is missing refresh_token parameter",
         )
 
-        val refreshContext = tokenService.decodeJwt(refreshToken)
+        val refreshTokenClaims = tokenService.decodeJwt(refreshToken).jwtClaims
 
-        if (refreshContext.jwtClaims.clientId != client.id) throw TokenException(
+        if (refreshTokenClaims.clientId != client.id) throw TokenException(
             error = TokenError.AccessDenied,
             description = "Client is not allowed to use this refresh token",
         )
 
-        val refreshScopes = refreshContext.jwtClaims.scopes ?: emptySet()
+        val refreshScopes = refreshTokenClaims.scopes ?: emptySet()
 
-        context.scopes = context.scopes?.filter { refreshScopes.contains(it) }?.toSet() ?: refreshScopes
-
-        context.commonClaims.apply {
-            refreshContext.jwtClaims.claimsMap.forEach { (key, value) -> setClaim(key, value) }
+        (refreshTokenClaims.getClaimValue("common_claims") as? Map<*, *>)?.also { claims ->
+            context.commonClaims.put(claims)
         }
 
+        (refreshTokenClaims.getClaimValue("refresh_claims") as? Map<*, *>)?.also { claims ->
+            context.refreshClaims.put(claims)
+        }
+
+        (refreshTokenClaims.getClaimValue("access_claims") as? Map<*, *>)?.also { claims ->
+            context.accessClaims.put(claims)
+        }
+
+        (refreshTokenClaims.getClaimValue("id_claims") as? Map<*, *>)?.also { claims ->
+            context.idClaims.put(claims)
+        }
+
+        context.scopes = context.scopes?.filter { refreshScopes.contains(it) }?.toSet() ?: refreshScopes
     }
 }

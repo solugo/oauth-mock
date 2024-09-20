@@ -7,6 +7,18 @@ private const val CLAIM_SESSION_ID = "sid"
 private const val CLAIM_CLIENT_ID = "client_id"
 private const val CLAIM_PREFERRED_USERNAME = "preferred_username"
 
+fun JwtClaims.put(claims: JwtClaims) {
+    put(claims.claimsMap)
+}
+
+fun JwtClaims.put(claims: Map<*, *>) {
+    claims.forEach { (key, value) ->
+        if (key !is String) throw RuntimeException("Key $key is not a string")
+        setClaim(key, value)
+    }
+}
+
+
 var JwtClaims.scopes: Set<String>?
     get() = run {
         getStringClaimValue(CLAIM_SCOPE)?.split(" ")?.toSet()

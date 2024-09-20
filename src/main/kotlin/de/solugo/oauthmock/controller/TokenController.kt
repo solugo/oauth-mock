@@ -5,11 +5,9 @@ import de.solugo.oauthmock.ConfigurationProvider
 import de.solugo.oauthmock.ServerProperties
 import de.solugo.oauthmock.service.TokenService
 import de.solugo.oauthmock.token.*
-import de.solugo.oauthmock.util.plus
-import de.solugo.oauthmock.util.scopes
-import de.solugo.oauthmock.util.sessionId
-import de.solugo.oauthmock.util.uuid
+import de.solugo.oauthmock.util.*
 import kotlinx.coroutines.reactor.awaitSingle
+import org.jose4j.jwt.JwtClaims
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.util.MultiValueMap
@@ -77,6 +75,22 @@ class TokenController(
             scopes = parameters.getFirst("scope")?.split(" ")?.toSet(),
         )
 
+        parameters["claims"]?.forEach {
+            context.commonClaims.put(JwtClaims.parse(it))
+        }
+
+        parameters["idClaims"]?.forEach {
+            context.idClaims.put(JwtClaims.parse(it))
+        }
+
+        parameters["accessClaims"]?.forEach {
+            context.accessClaims.put(JwtClaims.parse(it))
+        }
+
+        parameters["refreshClaims"]?.forEach {
+            context.refreshClaims.put(JwtClaims.parse(it))
+        }
+
         tokenProcessors.process(TokenProcessor.Step.PRE, context)
 
         grant.process(context)
@@ -96,24 +110,39 @@ class TokenController(
             claims.sessionId = claims.sessionId ?: uuid()
         }
 
+        commonClaims + context.refreshClaims
+
         buildMap {
             put("token_type", "Bearer")
 
+            refreshClaims.setClaim("common_claims", context.commonClaims.claimsMap)
+
             accessClaims.takeIf { it.claimsMap.isNotEmpty() }?.also { claims ->
                 put("access_token", tokenService.encodeJwt(context.issuer, claims))
+
+                refreshClaims.setClaim("access_claims", context.accessClaims.claimsMap)
 
                 claims.expirationTime?.also {
                     put("expires_in", it.value - (claims.issuedAt?.value ?: Instant.now().epochSecond))
                 }
             }
-            refreshClaims.takeIf { it.claimsMap.isNotEmpty() }?.also { claims ->
-                if (claims.scopes?.contains("offline_access") != true) return@also
-                put("refresh_token", tokenService.encodeJwt(context.issuer, claims))
-            }
+
             idClaims.takeIf { it.claimsMap.isNotEmpty() }?.also { claims ->
                 if (claims.scopes?.contains("openid") != true) return@also
+
+                refreshClaims.setClaim("id_claims", context.idClaims.claimsMap)
+
                 put("id_token", tokenService.encodeJwt(context.issuer, claims))
             }
+
+            refreshClaims.takeIf { it.claimsMap.isNotEmpty() }?.also { claims ->
+                if (claims.scopes?.contains("offline_access") != true) return@also
+
+                refreshClaims.setClaim("refresh_claims", context.refreshClaims.claimsMap)
+
+                put("refresh_token", tokenService.encodeJwt(context.issuer, claims))
+            }
+
         }
     } catch (ex: Exception) {
         logger.error("Error processing token request", ex)
