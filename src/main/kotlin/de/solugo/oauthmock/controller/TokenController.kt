@@ -5,9 +5,11 @@ import de.solugo.oauthmock.ConfigurationProvider
 import de.solugo.oauthmock.ServerProperties
 import de.solugo.oauthmock.service.TokenService
 import de.solugo.oauthmock.token.*
-import de.solugo.oauthmock.util.*
+import de.solugo.oauthmock.util.plus
+import de.solugo.oauthmock.util.scopes
+import de.solugo.oauthmock.util.sessionId
+import de.solugo.oauthmock.util.uuid
 import kotlinx.coroutines.reactor.awaitSingle
-import org.jose4j.jwt.JwtClaims
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.util.MultiValueMap
@@ -74,22 +76,6 @@ class TokenController(
             parameters = parameters,
             scopes = parameters.getFirst("scope")?.split(" ")?.toSet(),
         )
-
-        parameters["claims"]?.forEach {
-            context.commonClaims.put(JwtClaims.parse(it))
-        }
-
-        parameters["idClaims"]?.forEach {
-            context.idClaims.put(JwtClaims.parse(it))
-        }
-
-        parameters["accessClaims"]?.forEach {
-            context.accessClaims.put(JwtClaims.parse(it))
-        }
-
-        parameters["refreshClaims"]?.forEach {
-            context.refreshClaims.put(JwtClaims.parse(it))
-        }
 
         tokenProcessors.process(TokenProcessor.Step.PRE, context)
 

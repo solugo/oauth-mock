@@ -12,3 +12,9 @@ fun uri(uri: String, block: UriComponentsBuilder.() -> Unit) = UriComponentsBuil
     block()
     toUriString()
 }
+
+
+fun String.removePrefixOrNull(prefix: String) = when {
+    startsWith(prefix) -> substring(prefix.length)
+    else -> null
+}
