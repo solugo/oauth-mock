@@ -1,0 +1,48 @@
+[versions]
+kotlin = "2.2.10"
+kotlinCoroutines = "1.10.2"
+springBoot = "3.5.5"
+jib = "3.4.5"
+jose4j = "0.9.6"
+junit = "5.13.4"
+kotest = "6.0.1"
+ktor = "3.2.3"
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+jib = { id = "com.google.cloud.tools.jib", version.ref = "jib" }
+
+[libraries]
+spring-boot-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux", version.ref = "springBoot" }
+spring-boot-freemarker = { module = "org.springframework.boot:spring-boot-starter-freemarker", version.ref = "springBoot" }
+spring-boot-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "springBoot" }
+
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+kotlin-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlinCoroutines" }
+kotlin-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinCoroutines" }
+
+ktor-client-java = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
+ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-jackson = { module = "io.ktor:ktor-serialization-jackson", version.ref = "ktor" }
+
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotest-assertions-json = { module = "io.kotest:kotest-assertions-json", version.ref = "kotest" }
+
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+
+jose4j = { module = "org.bitbucket.b_c:jose4j", version.ref = "jose4j" }
+
+[bundles]
+kotlin = ["kotlin-reflect"]
+kotlin-coroutines = ["kotlin-coroutines-reactor"]
+kotlin-coroutines-test = ["kotlin-coroutines-test"]
+spring-boot = ["spring-boot-webflux", "spring-boot-freemarker"]
+spring-boot-test = ["spring-boot-test"]
+ktor = ["ktor-client-java", "ktor-client-contentNegotiation", "ktor-serialization-jackson"]
+jose4j = ["jose4j"]
+kotest = ["kotest-assertions-core", "kotest-assertions-json"]
+junit = ["junit-jupiter-api"]
+junit-runtime = ["junit-jupiter-engine"]
